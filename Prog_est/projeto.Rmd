@@ -1,0 +1,431 @@
+---
+title: "Cupom Coletor e Paradoxo do Aniversário"
+output: html_notebook
+---
+
+```{r}
+#Pacotes utilizados
+library(ggplot2)
+#seed fixa
+set.seed(123)
+```
+
+**Introdução**
+
+Neste projeto estudaremos dois problemas de probabilidade clássicos, o cupom-coletor e o paradoxo do aniversário. O objetivo do trabalho é utilizar técnicas de programação para simular em grandes iterações e diferentes métricas os problemas, e visa coletar resultados empíricos e comparar com os resultados teóricos.
+
+**Cupom-coletor**
+
+Neste problema, o colecionador de cupons tem como objetivo completar o seu "álbum". No contexto, o colecionador realiza sorteios com reposição dos itens do álbum até completar a sua coleção. A pegunta para este problema é "espera-se quantos sorteios com reposição para completar todos os itens da coleção?"
+
+**Simulação: Cupom-coletor**
+
+Considere um álbum com $N$ itens distintos. Em cada passo, um itens será sorteado do conjunto, sendo que cada item tem probabilidade $1/N$ de ser escolhido. O item é reposto e o sorteio é feito novamente. O processo continua até que todos os $N$ itens é observado pelo menos uma vez, ou seja, o "álbum é completado". A variável de interesse é o número de sorteios necessários $T_n$.
+
+```{r}
+CupCol <- function(N){
+  aux <- c() #vetor auxiliar para armazenar os itens já sorteados
+  Tn <- 0 #para contar o número de sorteios realizados
+  
+  while(length(aux) < N){ #loop até completar o álbum 
+    Tn <- Tn + 1 #contagem dos sorteios
+    i <- sample(1:N, 1) #sorteio de um item com probabilidades iguais
+    
+    if(i %in% aux){ #verifica se o item já foi observado
+      next #pula para próxima iteração
+    }
+    else{ #se o item não foi observado ainda
+      aux <- c(aux, i) # adiciona o item no vetor aux
+    }
+  }
+  return(Tn) #retorna o numero de sorteios feitos 
+}
+
+```
+
+Acima, escrevemos uma função o qual simula o problema do cupom-coletor, com parâmetro $N$. Podemos simular o problema com diferentes $N$s.
+
+```{r}
+CupCol(N = 50)
+CupCol(N = 100)
+CupCol(N = 200)
+CupCol(N = 500)
+```
+
+Vamos realizar $M = 5000$ réplicas para cada $N$.
+
+```{r}
+replicador <- function(M, N){
+  aux <- c()
+  for(i in 1:M){ #faz M iteracoes do processo
+    x <- CupCol(N) #chama a função 
+    aux <- c(aux, x) #armazena o valor x em um vetor
+  }
+  return(aux)#retorna o vetor com os M numeros de sorteios 
+  
+}
+```
+
+```{r}
+#M = 5000 para todo N
+A50 <- replicador(5000, 50) #N=50
+A100 <- replicador(5000, 100) #N=100
+A200 <- replicador(5000, 200) #N=200
+A500 <- replicador(5000, 500) #N=500
+```
+
+Assim, podemos encontrar a média, a variância e distribuição empírica das simulações:
+
+```{r}
+#Tabela de Médias e Variancias para cada N (empírico)
+Num <- c("50", "100", "200", "500")
+medias_emp <- c(mean(A50), mean(A100), mean(A200), mean(A500))
+variancias_emp <- c(var(A50), var(A100), var(A200), var(A500))
+
+tabela_emp <- data.frame(
+  N = Num,
+  Média = round(medias_emp, 2),
+  Variância = round(variancias_emp, 2)
+)
+
+print(tabela_emp)
+```
+
+```{r}
+h_emp_50 <- hist(A50,
+     main = "Histograma N = 50",
+     xlab = "Número de sorteios necessários", 
+     ylab = "Frequência",
+     col = "lightblue",          
+     border = "black",           
+     breaks = 50,                 
+     xlim = c(100, 600),           
+     ylim = c(0, 500)) 
+
+h_emp_100 <- hist(A100,
+     main = "Histograma N = 100",
+     xlab = "Número de sorteios necessários", 
+     ylab = "Frequência",
+     col = "lightgreen",          
+     border = "black",           
+     breaks = 50,                 
+     xlim = c(200, 1200),           
+     ylim = c(0, 500)) 
+
+h_emp_200 <- hist(A200,
+     main = "Histograma N = 200",
+     xlab = "Número de sorteios necessários", 
+     ylab = "Frequência",
+     col = "lightyellow",          
+     border = "black",           
+     breaks = 50,                 
+     xlim = c(500, 3000),           
+     ylim = c(0, 500)) 
+
+h_emp_500 <- hist(A500,
+     main = "Histograma N = 500",
+     xlab = "Número de sorteios necessários", 
+     ylab = "Frequência",
+     col = "purple",          
+     border = "black",           
+     breaks = 50,                 
+     xlim = c(2000, 7000),           
+     ylim = c(0, 500))
+
+
+```
+
+**Teoria: Cupom-coletor**
+
+O valor esperado do $T$ (número de sorteios) é (resultados em(1)):
+
+$$
+E(T) = nH(n)
+$$
+
+onde o $H(n)$ é o n-ésimo número harmônico:
+
+$$
+H(n) = 1 + \frac{1}{2}+...+\frac{1}{n-1}+\frac{1}{n}
+$$
+
+Para valores grandes de $n$, pode ser aproximado como:
+
+$$
+E(T) = nH(n) \approx n\ln{(n)} +\gamma n +\frac{1}{2} +O\bigg(\frac{1}{n}\bigg) 
+$$
+
+onde $\gamma \approx 0.577215665$ é a constante Euler-Mascheroni e $O\bigg(\frac{1}{n}\bigg)$ representa um termo de erro que decresce proporcionalmente a $1/n$.
+
+A variância de $T$ é (resultados em (1)):
+
+$$
+Var(T) < n^2\bigg(\frac{\pi^2}{6}\bigg)
+$$
+
+Assim, podemos encontrar o valor esperado e variância aproximados para cada n:
+
+```{r}
+#funçoes para calcular a medias e variancias teoricas
+media <- function(n){
+  return(n*log(n) + 0.577215665*n + 1/2 )
+}
+variancia <- function(n){
+  return((n^2)*(pi^2)/6)
+} 
+```
+
+```{r}
+#Tabela de medias e variancias aprox. (Teorica)
+medias_real <- c(media(50), media(100), media(200), media(500))
+variancias_real <- c(variancia(50), variancia(100), variancia(200), variancia(500))
+
+tabela_real <- data.frame(
+  N = Num,
+  Média = round(medias_real, 2),
+  Variância = round(variancias_real, 2)
+)
+
+print(tabela_real)
+```
+
+Para mais detalhes, fazemos o teste-t de student para a média empírca com a média real:
+
+```{r}
+t.test(A50, mu = media(50))
+t.test(A100, mu = media(100))
+t.test(A200, mu = media(200))
+t.test(A500, mu = media(500))
+```
+
+**Empírico x Teórico**
+
+Podemos comparar os resultados obtidos empiricamente e os teóricos:
+
+```{r}
+#tabela com empirico e teorico
+tabela_final <- data.frame(
+  N = Num,
+  Média_emp = round(medias_emp, 2),
+  Média_teo = round(medias_real, 2),
+  Variância_emp = round(variancias_emp, 2),
+  Variância_teo = round(variancias_real, 2)
+
+)
+print(tabela_final)
+```
+
+Encontramos também o erro absoluto:
+
+```{r}
+erro_media <- abs(medias_emp - medias_real)
+erro_variancia <- abs(variancias_emp - variancias_real)
+
+tabela_erro <- data.frame(
+  N = Num,
+  Médias_erro = erro_media,
+  Variâncias_erro = erro_variancia
+)
+print(tabela_erro)
+```
+
+**Paradóxo do aniversário**
+
+Neste problema, em grupo de $k$ indivíduos aleatórios, queremos encontrar a probabilidade de duas pessoas ter a mesma data de aniversário.
+
+**Simulação: Paradóxo do aniversário**
+
+Fixe $N = 365$. Para cada $k \in [2, 60]$ pessoas será feito um sorteio com reposição de 1 até $N$, $k$ vezes. Se tiver um item já observado, o sorteio conta como sucesso. Se não, fracasso. A variável de interesse é um indicador booleano se foi sucesso ou fracasso no sorteio.
+
+```{r}
+ParAni <- function(N, k){
+  aux <- c()#vetor auxiliar para armazenar as datas sorteadas
+  bool <- FALSE# booleano para ver se foi sucesso ou fracasso
+  for(i in 1:k){ #loop para sortear as datas k vezes
+    x <- sample(1:N, 1) #sorteio de uma data, de 1 até N=365
+    if(x %in% aux){ #verifica se houve datas repetidas(colisão)
+      bool <- TRUE #booleano torna true=sucesso
+      break #termina as iteraçoes
+    }
+    else{
+      aux <- c(aux, x)#se não, adiciona a data no vetor aux
+    }
+    
+  }
+  return(bool)#retorna o booleano
+}
+```
+
+Faremos a simulação com $N = 365$ fixo, para diferentes $k$ :
+
+```{r}
+N <- 365
+ParAni(N, 2)#k=2
+ParAni(N, 20)#k=20
+ParAni(N, 350)#k=350
+
+```
+
+Para cada $k \in [2:60]$, realizaremos $M= 10000$ simulações:
+
+```{r}
+repetidor <- function(k, M){
+ aux <- list() #lista para armazenar os vetores
+for(i in 2:k){ #para cada k, sera feito os loops
+  vetor <- c() #vetor para armazenar os booleanos
+  for(l in 1:M){ 
+   x <- ParAni(N = 365, i) #sorteios 
+   vetor <- c(vetor, x) #adiciona o novo bool no vetor
+  }
+  aux <- c(aux, list(vetor)) #adiciona o vetor na lsta
+  }
+return(aux)#retorna a lista
+ }
+```
+
+```{r}
+k <- 60
+M <- 10000
+PA_60 <- repetidor(k, M)
+```
+
+Vamos encontrar a frequência de sucesso(colisão) para cada $k$ :
+
+```{r}
+f <- function(lista, M){
+n <- length(lista)  
+contagem_true <- c()#vetor para armazenar quantos true tem por k
+for(i in 1:n){
+  true_count <- sum(unlist(lista[[i]]) %in% TRUE, na.rm = TRUE)
+  contagem_true <- c(contagem_true, true_count)
+  }
+porc_true <- (contagem_true/M)*100 #porcentagem da taxa de sucesso
+return(porc_true)
+}
+
+x <- f(PA_60, M) 
+
+```
+
+Para visualizar melhor, faremos uma tabela e um gráfico com os dados obtidos experimentalmente:
+
+```{r}
+tabela_freq <- data.frame(
+  N = 2:k,
+  f_sucesso = x
+)
+print(tabela_freq)
+```
+
+```{r}
+t_ani_emp <- plot(tabela_freq$N, tabela_freq$f_sucesso,
+     main = "N x Frequência",      
+     xlab = "N",                 
+     ylab = "frequência",                 
+     col = "black",                     
+     pch = 16,                        
+     cex = 1,                     
+     type = "p",                      
+     xlim = c(0, 60),                 
+     ylim = c(0, 100)                 
+)
+```
+
+**Teoria: Paradoxo do Aniversário**
+
+Para calcular a probabilidade de $n$ pessoas em uma sala , em que pelo menos duas pessoas tenham o mesmo aniverário, calculamos a probabilidade do complementar, ou seja, a probabilidade de que $n$ pessoas não tenham o mesmo aniversário(referencias em 2):
+
+$\bar{p}(n) = 1\cdot \bigg(1 - \frac{1}{365}\bigg)\cdot \bigg(1 - \frac{2}{365}\bigg)\cdot\cdot\cdot \bigg(1 - \frac{n-1}{365}\bigg) = \frac{365!}{365^n (365-n)!}$
+
+Com isso, encontramos a probabilidade desejada, de $n$ pessoas, pelo menos duas pessoas terem o mesmo aniversário:
+
+$p(n) = 1 - \bar{p}(n)$
+
+Fazemos então o código para encontrar as probabilidades:
+
+```{r}
+f_prob_an <- function(n){
+  if(n > 365){
+    return(1) #se n maior que 365, a probabilidade é 1
+  }
+  else if (n < 2){
+    return(0) #se n menor que 2,  a probabilidade é 0
+  }
+  else {
+    prob_diferentes <- 1
+    for (i in 1:(n-1)) {
+      prob_diferentes <- prob_diferentes * (365 - i) / 365
+    }
+    # Probabilidade de pelo menos 2 terem o mesmo aniversário
+    return(1 - prob_diferentes)
+  }
+}
+```
+
+```{r}
+k = 60
+vetor_aniv <- c()
+for(i in 2:k){
+  y <- f_prob_an(i)
+  vetor_aniv <- c(vetor_aniv, y)
+}
+
+tabela_freq_real <- data.frame(
+  N = 2:k,
+  f_sucesso_real = vetor_aniv *100
+)
+print(tabela_freq_real)
+```
+
+```{r}
+t_ani_real <- plot(tabela_freq_real$N, tabela_freq_real$f_sucesso_real,
+     main = "N x Frequência",      
+     xlab = "N",                 
+     ylab = "frequência",                 
+     col = "black",                     
+     pch = 16,                        
+     cex = 1,                     
+     type = "p",                      
+     xlim = c(0, 60),                 
+     ylim = c(0, 100)                 
+)
+```
+
+**Empírico x teórico**
+
+Podemos comparar os resultados obtidos empiricamente e os teóricos, com tabela e gráfico:
+
+```{r}
+tabela_freq_geral <- data.frame(
+  N = 2:k,
+  f_sucesso_real = vetor_aniv *100,
+  f_suceeso_emp = x
+)
+print(tabela_freq_geral)
+```
+
+```{r}
+plot(tabela_freq_real$f_sucesso_real, tabela_freq$f_sucesso,
+     xlab = "Probabilidade Real", 
+     ylab = "Probabilidade Empírica",
+     main = "Comparação: Real vs Empírica",
+     pch = 16, col = "blue", cex = 1.5)
+abline(a = 0, b = 1, col = "red", lty = 2) 
+```
+
+**Conclusões**
+
+Percebemos no projeto que, simulando um problema em algoritmo e obter uma grande quantidade de amostras independentes, podemos encontrar médias, variâncias ou probabilidades empíricas que tem boa precisão. Esse método é chamado de Método do Monte Carlo, que explica que ao obter amostras aleatórias de grande número, este tende ao parâmetro desejado, ou seja:
+
+$$
+\hat{\theta_n} = \frac{1}{n}\sum{}g(X_i) \to \theta
+$$
+
+quase certamente, pela Lei dos Grandes números.
+
+Assim, concluímos que é possível obter respostas de problemas probabilísticos analicamente, ao simular o problema em códigos e obter várias amostras aleatórias, conforme foi feito no projeto.
+
+**Referências**
+
+(1) <https://towardsdatascience.com/coupon-collectors-problem-a-probability-masterpiece-1d5aed4af439/>
+(2) <https://pt.wikipedia.org/wiki/Paradoxo_do_anivers%C3%A1rio>
